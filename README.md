@@ -1,5 +1,6 @@
 # 🧬 Prompt Evolution Engine
 
+[![CI](https://github.com/VDurocher/prompt-evolution-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/VDurocher/prompt-evolution-engine/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://python.org)
 [![OpenAI](https://img.shields.io/badge/Powered%20by-GPT--4o--mini-412991)](https://openai.com)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
