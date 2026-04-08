@@ -1,6 +1,6 @@
 """
-Interface Streamlit du Prompt Evolution Engine.
-Lance l'évolution et affiche les résultats en temps réel.
+Streamlit interface for the Prompt Evolution Engine.
+Launches the evolution and displays results in real time.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from core.evaluator import EvalCriteria
 from core.evolution import EvolutionConfig, EvolutionEngine, EvolutionState
 from core.genome import PromptGenome
 
-# --- Configuration de la page ---
+# --- Page configuration ---
 st.set_page_config(
     page_title="Prompt Evolution Engine",
     page_icon="🧬",
@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- CSS custom ---
+# --- Custom CSS ---
 st.markdown(
     """
     <style>
@@ -56,11 +56,11 @@ st.markdown(
 )
 
 
-# ─── Helpers de visualisation ──────────────────────────────────────────────
+# ─── Visualisation helpers ──────────────────────────────────────────────
 
 
 def build_score_chart(state: EvolutionState) -> go.Figure:
-    """Graphique Plotly de l'évolution des scores par génération."""
+    """Plotly chart of score evolution per generation."""
     results = state.generation_results
     gens = [r.generation for r in results]
 
@@ -73,7 +73,7 @@ def build_score_chart(state: EvolutionState) -> go.Figure:
     ))
     fig.add_trace(go.Scatter(
         x=gens, y=[r.mean_score for r in results],
-        mode="lines+markers", name="Moyenne",
+        mode="lines+markers", name="Mean",
         line={"color": "#f1c40f", "width": 2, "dash": "dot"},
         marker={"size": 6},
     ))
@@ -85,8 +85,8 @@ def build_score_chart(state: EvolutionState) -> go.Figure:
     ))
 
     fig.update_layout(
-        title={"text": "Score par génération", "font": {"size": 16}},
-        xaxis_title="Génération",
+        title={"text": "Score per generation", "font": {"size": 16}},
+        xaxis_title="Generation",
         yaxis_title="Score (0 → 1)",
         yaxis={"range": [0, 1.05], "gridcolor": "#313244"},
         xaxis={"gridcolor": "#313244", "tickmode": "linear"},
@@ -101,7 +101,7 @@ def build_score_chart(state: EvolutionState) -> go.Figure:
 
 
 def build_genealogy_dot(state: EvolutionState) -> str:
-    """Construit le graphe de généalogie au format DOT (Graphviz)."""
+    """Builds the genealogy graph in DOT format (Graphviz)."""
 
     def score_to_color(score: float | None) -> str:
         if score is None:
@@ -134,7 +134,7 @@ def build_genealogy_dot(state: EvolutionState) -> str:
 
 
 def render_genome_card(genome: PromptGenome) -> None:
-    """Affiche un variant individuel dans un st.container."""
+    """Displays an individual variant in a st.container."""
     score = genome.score or 0.0
     icon = "🟢" if score >= 0.7 else "🟡" if score >= 0.4 else "🔴"
     tag = genome.technique_tags[0] if genome.technique_tags else "?"
@@ -144,11 +144,11 @@ def render_genome_card(genome: PromptGenome) -> None:
     if genome.rationale:
         st.caption(f"_{genome.rationale}_")
 
-    with st.expander("Voir le prompt complet"):
+    with st.expander("View full prompt"):
         st.code(genome.prompt_text, language=None)
 
     if genome.response_sample:
-        with st.expander("Voir la réponse produite"):
+        with st.expander("View produced response"):
             st.markdown(genome.response_sample)
 
     reasoning = genome.score_details.get("llm_reasoning", "")
@@ -157,15 +157,15 @@ def render_genome_card(genome: PromptGenome) -> None:
 
 
 def render_generation_results(state: EvolutionState) -> None:
-    """Affiche toutes les générations sous forme d'expanders."""
+    """Displays all generations as expanders."""
     for result in reversed(state.generation_results):
         if result.generation == 0:
-            label = f"🌱 Génération 0 — Prompt initial · Score: {result.max_score:.3f}"
+            label = f"🌱 Generation 0 — Initial prompt · Score: {result.max_score:.3f}"
         else:
             label = (
-                f"🔬 Génération {result.generation} "
+                f"🔬 Generation {result.generation} "
                 f"· Max: {result.max_score:.3f} "
-                f"· Moy: {result.mean_score:.3f}"
+                f"· Mean: {result.mean_score:.3f}"
             )
         is_last = result.generation == len(state.generation_results) - 1
 
@@ -187,11 +187,11 @@ def render_generation_results(state: EvolutionState) -> None:
 def main() -> None:
     st.title("🧬 Prompt Evolution Engine")
     st.caption(
-        "Optimise automatiquement un prompt via algorithme génétique — "
-        "chaque génération produit des variants plus performants."
+        "Automatically optimises a prompt via genetic algorithm — "
+        "each generation produces higher-performing variants."
     )
 
-    # ── Sidebar : configuration ──────────────────────────────────────────
+    # ── Sidebar: configuration ──────────────────────────────────────────
     with st.sidebar:
         st.header("⚙️ Configuration")
 
@@ -202,51 +202,51 @@ def main() -> None:
         )
 
         st.divider()
-        st.subheader("📋 Tâche")
+        st.subheader("📋 Task")
 
         task_description = st.text_area(
-            "Description de la tâche",
-            value="Résumer un texte technique en 3 bullet points clairs et concis",
+            "Task description",
+            value="Summarise a technical text in 3 clear and concise bullet points",
             height=80,
         )
         task_input = st.text_area(
-            "Entrée de test",
+            "Test input",
             value=(
-                "Les transformers utilisent le mécanisme d'attention pour traiter les séquences "
-                "de tokens en parallèle. Contrairement aux RNNs, ils n'ont pas de récurrence, "
-                "ce qui permet une meilleure parallélisation. Le mécanisme self-attention calcule "
-                "des scores de similarité entre tous les pairs de tokens."
+                "Transformers use the attention mechanism to process token sequences "
+                "in parallel. Unlike RNNs, they have no recurrence, "
+                "which enables better parallelisation. The self-attention mechanism computes "
+                "similarity scores between all pairs of tokens."
             ),
             height=130,
         )
         initial_prompt = st.text_area(
-            "Prompt initial",
-            value="Résume ce texte en 3 bullet points.",
+            "Initial prompt",
+            value="Summarise this text in 3 bullet points.",
             height=80,
         )
 
         st.divider()
-        st.subheader("🎯 Critères d'évaluation")
+        st.subheader("🎯 Evaluation criteria")
 
         use_llm_judge = st.checkbox("LLM-as-judge", value=True)
         llm_criteria = ""
         if use_llm_judge:
             llm_criteria = st.text_area(
-                "Critères pour le juge LLM",
+                "Criteria for the LLM judge",
                 value=(
-                    "Les bullet points sont clairs, informatifs et couvrent les concepts essentiels. "
-                    "Ils sont formatés avec des tirets et ne dépassent pas 2 lignes chacun."
+                    "The bullet points are clear, informative and cover the essential concepts. "
+                    "They are formatted with dashes and do not exceed 2 lines each."
                 ),
                 height=100,
             )
 
-        with st.expander("Critères déterministes (optionnel)"):
+        with st.expander("Deterministic criteria (optional)"):
             required_kw_raw = st.text_input(
-                "Mots-clés requis (séparés par ',')",
+                "Required keywords (comma-separated)",
                 placeholder="transformer, attention",
             )
-            require_json = st.checkbox("Réponse doit être du JSON valide", value=False)
-            use_length = st.checkbox("Contrainte de longueur", value=False)
+            require_json = st.checkbox("Response must be valid JSON", value=False)
+            use_length = st.checkbox("Length constraint", value=False)
             length_range: tuple[int, int] | None = None
             if use_length:
                 col1, col2 = st.columns(2)
@@ -255,54 +255,54 @@ def main() -> None:
                 length_range = (int(min_len), int(max_len))
 
         st.divider()
-        st.subheader("🔬 Paramètres d'évolution")
+        st.subheader("🔬 Evolution parameters")
 
         col1, col2 = st.columns(2)
         population_size = col1.number_input("Variants / gen", min_value=2, max_value=10, value=5)
-        num_generations = col2.number_input("Générations", min_value=1, max_value=8, value=4)
+        num_generations = col2.number_input("Generations", min_value=1, max_value=8, value=4)
         num_survivors = st.slider(
-            "Survivants / gen",
+            "Survivors / gen",
             min_value=1,
             max_value=int(population_size),
             value=min(2, int(population_size)),
         )
 
-        # Estimation coût
+        # Cost estimate
         judge_calls = int(population_size) * int(num_generations) if use_llm_judge else 0
         total_calls = 1 + int(num_generations) * int(population_size) + 1 + judge_calls
         estimated_cost = total_calls * 0.0003
-        st.caption(f"~{total_calls} appels API estimés · **~{estimated_cost:.3f}€**")
+        st.caption(f"~{total_calls} estimated API calls · **~{estimated_cost:.3f}€**")
 
-        run_btn = st.button("🚀 Lancer l'évolution", type="primary", use_container_width=True)
+        run_btn = st.button("🚀 Start evolution", type="primary", use_container_width=True)
 
-    # ── Page d'accueil (avant le run) ────────────────────────────────────
+    # ── Home page (before run) ────────────────────────────────────────
     if not run_btn:
         col1, col2, col3 = st.columns(3)
-        col1.metric("Algorithme", "Génétique")
-        col2.metric("Évaluateur", "LLM-as-judge + Heuristiques")
-        col3.metric("Modèle", "GPT-4o-mini")
+        col1.metric("Algorithm", "Genetic")
+        col2.metric("Evaluator", "LLM-as-judge + Heuristics")
+        col3.metric("Model", "GPT-4o-mini")
 
         st.markdown("---")
         st.markdown("""
-        ### Comment ça marche ?
+        ### How it works
 
-        | Étape | Description |
-        |-------|-------------|
-        | **Gen 0** | Ton prompt initial est exécuté et scoré |
-        | **Mutation** | Un LLM génère N variants avec des techniques différentes (CoT, few-shot, persona…) |
-        | **Scoring** | Chaque variant est exécuté et évalué (heuristiques + LLM-judge) |
-        | **Sélection** | Tournament selection : les meilleurs survivent |
-        | **Répète** | Jusqu'à K générations |
+        | Step | Description |
+        |------|-------------|
+        | **Gen 0** | Your initial prompt is run and scored |
+        | **Mutation** | An LLM generates N variants with different techniques (CoT, few-shot, persona…) |
+        | **Scoring** | Each variant is run and evaluated (heuristics + LLM-judge) |
+        | **Selection** | Tournament selection: the best survive |
+        | **Repeat** | Up to K generations |
 
-        **Résultat** : prompt optimal · courbe d'évolution · arbre de généalogie
+        **Output**: optimal prompt · evolution curve · genealogy tree
         """)
         return
 
     if not api_key:
-        st.error("⚠️ Renseigne ta clé API OpenAI dans la sidebar.")
+        st.error("⚠️ Enter your OpenAI API key in the sidebar.")
         return
 
-    # ── Construction des objets de configuration ─────────────────────────
+    # ── Build configuration objects ─────────────────────────────────────
     required_keywords = [kw.strip() for kw in required_kw_raw.split(",") if kw.strip()] \
         if required_kw_raw else []
 
@@ -327,10 +327,10 @@ def main() -> None:
     client = OpenAI(api_key=api_key)
     engine = EvolutionEngine(client)
 
-    # ── Placeholders pour les mises à jour live ───────────────────────────
-    progress_bar = st.progress(0.0, text="Initialisation…")
+    # ── Placeholders for live updates ─────────────────────────────────────
+    progress_bar = st.progress(0.0, text="Initialising…")
 
-    tab_evo, tab_best, tab_tree = st.tabs(["📈 Évolution", "🏆 Meilleur Prompt", "🌳 Généalogie"])
+    tab_evo, tab_best, tab_tree = st.tabs(["📈 Evolution", "🏆 Best Prompt", "🌳 Genealogy"])
 
     with tab_evo:
         chart_ph = st.empty()
@@ -342,62 +342,62 @@ def main() -> None:
     with tab_tree:
         tree_ph = st.empty()
 
-    # ── Boucle d'évolution ────────────────────────────────────────────────
+    # ── Evolution loop ────────────────────────────────────────────────
     try:
         for state in engine.run(evolution_config):
             total_gens = evolution_config.num_generations + 1
             progress = state.current_generation / total_gens
             gen_label = (
-                f"Génération {state.current_generation - 1}/{evolution_config.num_generations} "
-                f"— {'terminé' if state.is_complete else 'en cours…'}"
+                f"Generation {state.current_generation - 1}/{evolution_config.num_generations} "
+                f"— {'complete' if state.is_complete else 'in progress…'}"
             )
             progress_bar.progress(min(progress, 1.0), text=gen_label)
 
-            # Graphique
+            # Chart
             with tab_evo:
                 chart_ph.plotly_chart(build_score_chart(state), use_container_width=True)
                 with cards_ph.container():
                     render_generation_results(state)
 
-            # Meilleur prompt
+            # Best prompt
             best = state.best_genome
             if best:
                 with tab_best:
                     with best_ph.container():
                         col1, col2, col3, col4 = st.columns(4)
-                        col1.metric("Meilleur score", f"{best.score:.3f}" if best.score else "—")
+                        col1.metric("Best score", f"{best.score:.3f}" if best.score else "—")
                         col2.metric("Technique", best.technique_tags[0] if best.technique_tags else "—")
-                        col3.metric("Génération", str(best.generation))
+                        col3.metric("Generation", str(best.generation))
                         delta = state.improvement
                         col4.metric(
-                            "Amélioration",
+                            "Improvement",
                             f"+{delta:.3f}" if delta and delta > 0 else "—",
                             delta=delta,
                         )
 
-                        st.markdown("#### Prompt optimal")
+                        st.markdown("#### Optimal prompt")
                         st.markdown(
                             f'<div class="best-prompt"><pre>{best.prompt_text}</pre></div>',
                             unsafe_allow_html=True,
                         )
 
                         if best.response_sample:
-                            st.markdown("#### Réponse produite")
+                            st.markdown("#### Produced response")
                             st.markdown(best.response_sample)
 
                         reasoning = best.score_details.get("llm_reasoning", "")
                         if reasoning and isinstance(reasoning, str):
-                            st.info(f"💬 Évaluation : _{reasoning}_")
+                            st.info(f"💬 Evaluation: _{reasoning}_")
 
-            # Généalogie
+            # Genealogy
             with tab_tree:
                 tree_ph.graphviz_chart(build_genealogy_dot(state), use_container_width=True)
 
     except Exception as error:
-        st.error(f"Erreur durant l'évolution : {error}")
+        st.error(f"Error during evolution: {error}")
         return
 
-    progress_bar.progress(1.0, text="✅ Évolution terminée !")
+    progress_bar.progress(1.0, text="✅ Evolution complete!")
     st.balloons()
 
 
