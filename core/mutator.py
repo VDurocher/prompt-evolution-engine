@@ -1,6 +1,6 @@
 """
-Mutateur LLM : génère N variants d'un prompt en appliquant des techniques
-de prompt engineering différentes sur chaque variant.
+LLM Mutator: generates N variants of a prompt by applying different
+prompt engineering techniques to each variant.
 """
 
 from __future__ import annotations
@@ -16,37 +16,37 @@ from core.genome import PromptGenome
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """\
-Tu es un expert en prompt engineering. Ta mission : améliorer des prompts
-en appliquant des techniques précises et variées pour maximiser la qualité
-des réponses LLM sur une tâche donnée.\
+You are an expert in prompt engineering. Your mission: improve prompts
+by applying precise and varied techniques to maximise the quality
+of LLM responses on a given task.\
 """
 
 _USER_TEMPLATE = """\
-Voici les meilleurs prompts actuels, triés par score décroissant :
+Here are the current best prompts, sorted by descending score:
 
 {parent_prompts}
 
-Tâche cible : {task_description}
+Target task: {task_description}
 
-Génère exactement {n} nouveaux variants en appliquant des techniques DIFFÉRENTES.
-Utilise autant de techniques distinctes que possible parmi :
+Generate exactly {n} new variants by applying DIFFERENT techniques.
+Use as many distinct techniques as possible from:
 
-- chain_of_thought   : Ajouter "Raisonnons étape par étape" ou une structure de raisonnement explicite
-- few_shot           : Injecter 1-2 exemples concrets input/output adaptés à la tâche
-- persona            : Assigner un rôle d'expert précis et crédible
-- xml_structure      : Structurer les instructions avec des balises XML claires
-- constraints        : Ajouter des contraintes de format/longueur/style explicites
-- reformulation      : Réécrire les instructions de façon plus claire et directe
-- socratic           : Guider via des questions de clarification progressives
-- step_back          : Commencer par une réflexion de haut niveau avant de répondre
+- chain_of_thought   : Add "Let's think step by step" or an explicit reasoning structure
+- few_shot           : Inject 1-2 concrete input/output examples adapted to the task
+- persona            : Assign a precise and credible expert role
+- xml_structure      : Structure instructions with clear XML tags
+- constraints        : Add explicit format/length/style constraints
+- reformulation      : Rewrite instructions in a clearer and more direct way
+- socratic           : Guide via progressive clarifying questions
+- step_back          : Start with high-level reflection before answering
 
-Retourne UNIQUEMENT du JSON valide, sans texte avant ou après :
+Return ONLY valid JSON, with no text before or after:
 {{
   "variants": [
     {{
-      "prompt": "le prompt complet ici",
+      "prompt": "the complete prompt here",
       "technique": "chain_of_thought",
-      "rationale": "explication courte de la modification apportée"
+      "rationale": "short explanation of the change made"
     }}
   ]
 }}\
@@ -54,7 +54,7 @@ Retourne UNIQUEMENT du JSON valide, sans texte avant ou après :
 
 
 class Mutator:
-    """Génère des variants d'un prompt via un appel LLM."""
+    """Generates prompt variants via an LLM call."""
 
     def __init__(self, client: OpenAI) -> None:
         self._client = client
@@ -67,10 +67,10 @@ class Mutator:
         current_generation: int,
     ) -> list[PromptGenome]:
         """
-        Génère N variants à partir des génomes parents.
-        Chaque variant hérite des parent_ids de tous les parents.
+        Generates N variants from the parent genomes.
+        Each variant inherits the parent_ids of all parents.
         """
-        # Construit la liste des parents pour le meta-prompt
+        # Build the parent list for the meta-prompt
         sorted_parents = sorted(parents, key=lambda g: g.score or 0.0, reverse=True)
         parent_prompts = "\n\n".join(
             f"[Score: {p.score_display}]\n{p.prompt_text}"
@@ -98,7 +98,7 @@ class Mutator:
             data = json.loads(raw)
             variants_data = data.get("variants", [])
         except Exception as error:
-            logger.error("Échec de la mutation LLM : %s", error)
+            logger.error("LLM mutation failed: %s", error)
 
         parent_ids = [p.id for p in parents]
         variants: list[PromptGenome] = []
@@ -116,7 +116,7 @@ class Mutator:
                 )
             )
 
-        # Fallback : complète avec des copies du meilleur parent si pas assez de variants
+        # Fallback: fill with copies of the best parent if not enough variants
         while len(variants) < n and sorted_parents:
             best_parent = sorted_parents[0]
             variants.append(
@@ -125,7 +125,7 @@ class Mutator:
                     generation=current_generation,
                     parent_ids=parent_ids,
                     technique_tags=["fallback"],
-                    rationale="Copie du meilleur parent (mutation échouée)",
+                    rationale="Copy of best parent (mutation failed)",
                 )
             )
 
