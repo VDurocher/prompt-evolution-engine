@@ -1,7 +1,7 @@
 """
-Évaluateur : score une réponse LLM selon deux dimensions combinables.
-- Déterministe : heuristiques sans appel API (mots-clés, JSON, longueur, regex)
-- LLM-as-judge : GPT-4o-mini note la réponse selon des critères définis par l'utilisateur
+Evaluator: scores an LLM response along two combinable dimensions.
+- Deterministic: heuristics with no API call (keywords, JSON, length, regex)
+- LLM-as-judge: GPT-4o-mini scores the response against user-defined criteria
 """
 
 from __future__ import annotations
@@ -19,34 +19,34 @@ import config
 logger = logging.getLogger(__name__)
 
 _JUDGE_SYSTEM = (
-    "Tu es un évaluateur de réponses LLM. "
-    "Tu notes avec précision et objectivité selon les critères fournis."
+    "You are an LLM response evaluator. "
+    "You score responses accurately and objectively according to the provided criteria."
 )
 
 _JUDGE_USER_TEMPLATE = """\
-Évalue la réponse ci-dessous selon les critères fournis.
+Evaluate the response below according to the provided criteria.
 
-Tâche : {task_description}
-Critères d'évaluation : {criteria_description}
+Task: {task_description}
+Evaluation criteria: {criteria_description}
 
-Réponse à évaluer :
+Response to evaluate:
 {response}
 
-Attribue un score de 0.0 à 1.0 (deux décimales).
-Retourne UNIQUEMENT du JSON valide :
-{{"score": 0.85, "reasoning": "explication en 1-2 phrases concises"}}\
+Assign a score from 0.0 to 1.0 (two decimal places).
+Return ONLY valid JSON:
+{{"score": 0.85, "reasoning": "explanation in 1-2 concise sentences"}}\
 """
 
 
 @dataclass
 class EvalCriteria:
-    """Critères d'évaluation configurables par l'utilisateur."""
+    """User-configurable evaluation criteria."""
 
     # LLM-as-judge
     llm_judge_description: str = ""
     use_llm_judge: bool = True
 
-    # Déterministes
+    # Deterministic
     required_keywords: list[str] = field(default_factory=list)
     forbidden_keywords: list[str] = field(default_factory=list)
     require_valid_json: bool = False
@@ -55,7 +55,7 @@ class EvalCriteria:
 
     @property
     def has_deterministic(self) -> bool:
-        """Indique si au moins un critère déterministe est configuré."""
+        """Indicates whether at least one deterministic criterion is configured."""
         return bool(
             self.required_keywords
             or self.forbidden_keywords
@@ -67,8 +67,8 @@ class EvalCriteria:
 
 class Evaluator:
     """
-    Calcule un score composite pour une réponse LLM.
-    Score final = moyenne pondérée déterministe (0.35) + LLM-judge (0.65).
+    Computes a composite score for an LLM response.
+    Final score = weighted average of deterministic (0.35) + LLM-judge (0.65).
     """
 
     def __init__(self, client: OpenAI, criteria: EvalCriteria) -> None:
@@ -81,21 +81,21 @@ class Evaluator:
         task_description: str,
     ) -> tuple[float, dict[str, float | str]]:
         """
-        Retourne (score_final, détails_par_dimension).
-        score_final est toujours entre 0.0 et 1.0.
+        Returns (final_score, details_per_dimension).
+        final_score is always between 0.0 and 1.0.
         """
         details: dict[str, float | str] = {}
         component_scores: dict[str, float] = {}
         weights: dict[str, float] = {}
 
-        # --- Dimension déterministe ---
+        # --- Deterministic dimension ---
         if self._criteria.has_deterministic:
             det_score = self._deterministic_score(response)
             details["deterministic"] = det_score
             component_scores["deterministic"] = det_score
             weights["deterministic"] = config.DETERMINISTIC_WEIGHT
 
-        # --- Dimension LLM-as-judge ---
+        # --- LLM-as-judge dimension ---
         if self._criteria.use_llm_judge and self._criteria.llm_judge_description:
             llm_score, reasoning = self._llm_judge_score(response, task_description)
             details["llm_judge"] = llm_score
@@ -103,7 +103,7 @@ class Evaluator:
             component_scores["llm_judge"] = llm_score
             weights["llm_judge"] = config.LLM_JUDGE_WEIGHT
 
-        # Aucun critère configuré → score neutre
+        # No criteria configured → neutral score
         if not weights:
             return 0.5, details
 
@@ -116,22 +116,22 @@ class Evaluator:
         return round(final_score, 4), details
 
     def _deterministic_score(self, response: str) -> float:
-        """Score heuristique — aucun appel API."""
+        """Heuristic score — no API call."""
         sub_scores: list[float] = []
         crit = self._criteria
         response_lower = response.lower()
 
-        # Mots-clés requis
+        # Required keywords
         if crit.required_keywords:
             hits = sum(1 for kw in crit.required_keywords if kw.lower() in response_lower)
             sub_scores.append(hits / len(crit.required_keywords))
 
-        # Mots-clés interdits
+        # Forbidden keywords
         if crit.forbidden_keywords:
             violations = sum(1 for kw in crit.forbidden_keywords if kw.lower() in response_lower)
             sub_scores.append(max(0.0, 1.0 - violations / len(crit.forbidden_keywords)))
 
-        # JSON valide
+        # Valid JSON
         if crit.require_valid_json:
             try:
                 json.loads(response)
@@ -139,7 +139,7 @@ class Evaluator:
             except (json.JSONDecodeError, ValueError):
                 sub_scores.append(0.0)
 
-        # Longueur cible
+        # Target length
         if crit.target_length_range:
             min_len, max_len = crit.target_length_range
             length = len(response)
@@ -150,13 +150,13 @@ class Evaluator:
             else:
                 sub_scores.append(max(0.0, 1.0 - (length - max_len) / max_len))
 
-        # Pattern regex
+        # Regex pattern
         if crit.regex_pattern:
             try:
                 matched = bool(re.search(crit.regex_pattern, response, re.IGNORECASE | re.DOTALL))
                 sub_scores.append(1.0 if matched else 0.0)
             except re.error as error:
-                logger.warning("Regex invalide : %s", error)
+                logger.warning("Invalid regex: %s", error)
 
         if not sub_scores:
             return 0.5
@@ -164,13 +164,13 @@ class Evaluator:
 
     def _llm_judge_score(self, response: str, task_description: str) -> tuple[float, str]:
         """
-        Évaluation par LLM.
-        Retourne (score 0.0-1.0, raisonnement texte).
+        LLM-based evaluation.
+        Returns (score 0.0-1.0, text reasoning).
         """
         user_msg = _JUDGE_USER_TEMPLATE.format(
             task_description=task_description,
             criteria_description=self._criteria.llm_judge_description,
-            response=response[:2000],  # limite pour éviter les tokens excessifs
+            response=response[:2000],  # limit to avoid excessive tokens
         )
 
         try:
@@ -189,5 +189,5 @@ class Evaluator:
             reasoning = str(data.get("reasoning", ""))
             return max(0.0, min(1.0, score)), reasoning
         except Exception as error:
-            logger.error("Échec du LLM judge : %s", error)
-            return 0.5, "Évaluation indisponible"
+            logger.error("LLM judge failed: %s", error)
+            return 0.5, "Evaluation unavailable"
