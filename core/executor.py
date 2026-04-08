@@ -1,6 +1,6 @@
 """
-Exécuteur : applique un prompt sur une entrée cible via l'API OpenAI.
-Le prompt est utilisé comme system message, l'entrée comme user message.
+Executor: applies a prompt to a target input via the OpenAI API.
+The prompt is used as the system message, the input as the user message.
 """
 
 from __future__ import annotations
@@ -15,15 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class Executor:
-    """Exécute un prompt contre une tâche cible et retourne la réponse brute."""
+    """Runs a prompt against a target task and returns the raw response."""
 
     def __init__(self, client: OpenAI) -> None:
         self._client = client
 
     def run(self, prompt: str, task_input: str) -> str:
         """
-        Envoie [system: prompt, user: task_input] au modèle.
-        Retourne la réponse texte ou une chaîne vide en cas d'erreur.
+        Sends [system: prompt, user: task_input] to the model.
+        Returns the text response or an empty string on error.
         """
         try:
             response = self._client.chat.completions.create(
@@ -37,5 +37,5 @@ class Executor:
             )
             return response.choices[0].message.content or ""
         except Exception as error:
-            logger.error("Échec d'exécution du prompt : %s", error)
+            logger.error("Prompt execution failed: %s", error)
             return ""
