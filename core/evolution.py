@@ -1,6 +1,6 @@
 """
-Moteur d'évolution : orchestre mutations, exécutions, scoring et sélection.
-Implémenté comme générateur pour permettre les mises à jour live dans Streamlit.
+Evolution engine: orchestrates mutations, executions, scoring and selection.
+Implemented as a generator to allow live updates in Streamlit.
 """
 
 from __future__ import annotations
@@ -23,12 +23,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EvolutionConfig:
-    """Paramètres complets d'une session d'évolution."""
+    """Complete parameters for an evolution session."""
 
-    task_description: str       # description de la tâche cible
-    task_input: str             # entrée concrète sur laquelle les prompts sont testés
-    initial_prompt: str         # point de départ de l'évolution
-    eval_criteria: EvalCriteria # critères de scoring
+    task_description: str       # description of the target task
+    task_input: str             # concrete input on which prompts are tested
+    initial_prompt: str         # starting point of the evolution
+    eval_criteria: EvalCriteria # scoring criteria
 
     population_size: int = config.DEFAULT_POPULATION_SIZE
     num_generations: int = config.DEFAULT_NUM_GENERATIONS
@@ -38,7 +38,7 @@ class EvolutionConfig:
 
 @dataclass
 class EvolutionState:
-    """État complet d'une session d'évolution — snapshot après chaque génération."""
+    """Complete state of an evolution session — snapshot after each generation."""
 
     config: EvolutionConfig
     all_genomes: list[PromptGenome] = field(default_factory=list)
@@ -48,7 +48,7 @@ class EvolutionState:
 
     @property
     def best_genome(self) -> PromptGenome | None:
-        """Meilleur génome toutes générations confondues."""
+        """Best genome across all generations."""
         scored = [g for g in self.all_genomes if g.score is not None]
         if not scored:
             return None
@@ -56,13 +56,13 @@ class EvolutionState:
 
     @property
     def progress(self) -> float:
-        """Progression entre 0.0 et 1.0."""
+        """Progress between 0.0 and 1.0."""
         total = self.config.num_generations + 1
         return min(1.0, self.current_generation / total)
 
     @property
     def improvement(self) -> float | None:
-        """Delta de score entre le prompt initial et le meilleur prompt actuel."""
+        """Score delta between the initial prompt and the current best prompt."""
         if len(self.generation_results) < 1:
             return None
         initial_score = self.generation_results[0].best_genome.score
@@ -74,16 +74,16 @@ class EvolutionState:
 
 class EvolutionEngine:
     """
-    Moteur d'évolution génétique de prompts.
+    Genetic prompt evolution engine.
 
-    Algorithme :
-    1. Évalue le prompt initial (génération 0)
-    2. Pour chaque génération :
-       a. Le Mutator génère N variants depuis les survivants
-       b. L'Executor exécute chaque variant sur la tâche
-       c. L'Evaluator score chaque réponse
-       d. Tournament selection → sélectionne les meilleurs survivants
-    3. Yield l'état après chaque génération (live updates Streamlit)
+    Algorithm:
+    1. Evaluates the initial prompt (generation 0)
+    2. For each generation:
+       a. The Mutator generates N variants from the survivors
+       b. The Executor runs each variant on the task
+       c. The Evaluator scores each response
+       d. Tournament selection → selects the best survivors
+    3. Yields the state after each generation (Streamlit live updates)
     """
 
     def __init__(self, client: OpenAI) -> None:
@@ -91,21 +91,21 @@ class EvolutionEngine:
 
     def run(self, cfg: EvolutionConfig) -> Generator[EvolutionState, None, None]:
         """
-        Exécute l'évolution complète.
-        Yield un EvolutionState mis à jour après chaque génération.
+        Runs the full evolution.
+        Yields an updated EvolutionState after each generation.
         """
         state = EvolutionState(config=cfg)
         mutator = Mutator(self._client)
         evaluator = Evaluator(self._client, cfg.eval_criteria)
         executor = Executor(self._client)
 
-        # --- Génération 0 : évaluation du prompt initial ---
-        logger.info("Génération 0 — évaluation du prompt initial")
+        # --- Generation 0: evaluate initial prompt ---
+        logger.info("Generation 0 — evaluating initial prompt")
         initial = PromptGenome(
             prompt_text=cfg.initial_prompt,
             generation=0,
             technique_tags=["original"],
-            rationale="Prompt de départ fourni par l'utilisateur",
+            rationale="Initial prompt provided by the user",
         )
         self._evaluate_genome(initial, executor, evaluator, cfg)
         state.all_genomes.append(initial)
@@ -115,11 +115,11 @@ class EvolutionEngine:
 
         survivors = [initial]
 
-        # --- Générations 1..N ---
+        # --- Generations 1..N ---
         for gen in range(1, cfg.num_generations + 1):
-            logger.info("Génération %d — mutation + scoring", gen)
+            logger.info("Generation %d — mutation + scoring", gen)
 
-            # Mutation : génère N variants depuis les survivants
+            # Mutation: generate N variants from survivors
             variants = mutator.generate_variants(
                 parents=survivors,
                 task_description=cfg.task_description,
@@ -127,12 +127,12 @@ class EvolutionEngine:
                 current_generation=gen,
             )
 
-            # Exécution + scoring de chaque variant
+            # Execute + score each variant
             for genome in variants:
                 self._evaluate_genome(genome, executor, evaluator, cfg)
                 state.all_genomes.append(genome)
 
-            # Sélection par tournoi
+            # Tournament selection
             survivors = self._tournament_selection(variants, cfg)
 
             state.generation_results.append(GenerationResult.from_genomes(gen, variants))
@@ -149,7 +149,7 @@ class EvolutionEngine:
         evaluator: Evaluator,
         cfg: EvolutionConfig,
     ) -> None:
-        """Exécute le prompt sur la tâche et score la réponse. Modifie genome en place."""
+        """Runs the prompt on the task and scores the response. Mutates genome in place."""
         response = executor.run(genome.prompt_text, cfg.task_input)
         genome.response_sample = response
         score, details = evaluator.score(response, cfg.task_description)
@@ -162,10 +162,10 @@ class EvolutionEngine:
         cfg: EvolutionConfig,
     ) -> list[PromptGenome]:
         """
-        Sélection par tournoi :
-        - Tire tournament_size candidats au hasard dans le pool
-        - Le meilleur du groupe gagne et est retiré du pool
-        - Répète jusqu'à num_survivors gagnants
+        Tournament selection:
+        - Draws tournament_size candidates at random from the pool
+        - The best of the group wins and is removed from the pool
+        - Repeats until num_survivors winners are selected
         """
         scored = [g for g in genomes if g.score is not None]
         if not scored:
