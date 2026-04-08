@@ -1,6 +1,6 @@
 """
-Structures de données fondamentales du moteur d'évolution.
-Un PromptGenome représente un prompt à un instant donné de l'évolution.
+Core data structures for the evolution engine.
+A PromptGenome represents a prompt at a given point in the evolution.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import Optional
 @dataclass
 class PromptGenome:
     """
-    Unité atomique d'évolution : un prompt avec toutes ses métadonnées.
-    Sait d'où il vient (parent_ids) et comment il a été créé (technique_tags).
+    Atomic unit of evolution: a prompt with all its metadata.
+    Knows where it came from (parent_ids) and how it was created (technique_tags).
     """
 
     prompt_text: str
@@ -22,10 +22,10 @@ class PromptGenome:
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     parent_ids: list[str] = field(default_factory=list)
     technique_tags: list[str] = field(default_factory=list)
-    rationale: str = ""                          # explication de la mutation
-    score: Optional[float] = None               # None = pas encore évalué
+    rationale: str = ""                          # explanation of the mutation
+    score: Optional[float] = None               # None = not yet evaluated
     score_details: dict[str, float] = field(default_factory=dict)
-    response_sample: Optional[str] = None       # réponse produite lors de l'évaluation
+    response_sample: Optional[str] = None       # response produced during evaluation
 
     @property
     def is_scored(self) -> bool:
@@ -33,13 +33,13 @@ class PromptGenome:
 
     @property
     def score_display(self) -> str:
-        """Score formaté pour l'affichage."""
+        """Score formatted for display."""
         if self.score is None:
             return "—"
         return f"{self.score:.3f}"
 
     def short_text(self, max_chars: int = 100) -> str:
-        """Version tronquée du prompt pour les affichages compacts."""
+        """Truncated version of the prompt for compact display."""
         if len(self.prompt_text) <= max_chars:
             return self.prompt_text
         return self.prompt_text[:max_chars] + "…"
@@ -47,7 +47,7 @@ class PromptGenome:
 
 @dataclass
 class GenerationResult:
-    """Agrégat statistique d'une génération complète."""
+    """Statistical aggregate for a complete generation."""
 
     generation: int
     genomes: list[PromptGenome]
@@ -58,10 +58,10 @@ class GenerationResult:
 
     @classmethod
     def from_genomes(cls, generation: int, genomes: list[PromptGenome]) -> "GenerationResult":
-        """Construit un résultat depuis une liste de génomes scorés."""
+        """Builds a result from a list of scored genomes."""
         scored = [g for g in genomes if g.score is not None]
         if not scored:
-            # Cas de fallback : tous non scorés
+            # Fallback case: all genomes unscored
             placeholder = genomes[0] if genomes else PromptGenome(prompt_text="", generation=generation)
             return cls(
                 generation=generation,
